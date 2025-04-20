@@ -1,27 +1,50 @@
-const plantImageInput = document.getElementById('plant-image');
-const imagePreview = document.getElementById('image-preview');
-const resultDiv = document.getElementById('result');
-const identifyBtn = document.getElementById('identify-btn');
+function identifyPlant() {
+  const input = document.getElementById("imageInput");
+  const file = input.files[0];
 
-plantImageInput.addEventListener('change', function () {
-  const file = this.files[0];
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onload = function (e) {
-      imagePreview.innerHTML = `<img src="${e.target.result}" alt="Plant Preview">`;
-      resultDiv.textContent = "Plant name will appear here";
-    };
-
-    reader.readAsDataURL(file);
+  if (!file) {
+    alert("Please upload an image first.");
+    return;
   }
-});
 
-identifyBtn.addEventListener('click', function () {
-  if (plantImageInput.files.length === 0) {
-    alert("Please upload a plant image first.");
-  } else {
-    // Placeholder result
-    resultDiv.textContent = "🌸 Identified Plant: Rose";
-  }
-});
+  const reader = new FileReader();
+  reader.onloadend = function () {
+    const base64Image = reader.result.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    fetch("https://plant.id/api/v3/identification", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Api-Key": "nwkNBmtHEJXZkp8uTf3jFlJLjTmx9fbaIaCcgvBsFBMaoNjNzr"
+      },
+      body: JSON.stringify({
+        images: [base64Image],
+        latitude: 49.207,
+        longitude: 16.608,
+        similar_images: true
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      const result = document.getElementById("result");
+      const plant = data?.result?.classification?.suggestions[0];
+
+      if (plant) {
+        result.innerHTML = `
+          <h3>Plant Identified: ${plant.name}</h3>
+          <img src="${plant?.similar_images[0]?.url}" alt="${plant.name}" />
+        `;
+      } else {
+        result.innerHTML = "Sorry, plant not identified.";
+      }
+    })
+    .catch(error => {
+      console.error("Error:", error);
+    });
+  };
+
+  reader.readAsDataURL(file);
+
+  const preview = document.getElementById("preview");
+  preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Preview" />`;
+}
